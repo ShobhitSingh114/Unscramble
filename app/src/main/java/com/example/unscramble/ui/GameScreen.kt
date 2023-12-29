@@ -211,6 +211,7 @@ private fun FinalScoreDialog(
 ) {
     val activity = (LocalContext.current as Activity)
     val newVariable = "to check how will new content is added"
+    print(newVariable)
 
     AlertDialog(
         onDismissRequest = {
