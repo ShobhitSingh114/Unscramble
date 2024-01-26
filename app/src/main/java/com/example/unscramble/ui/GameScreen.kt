@@ -60,7 +60,7 @@ import com.example.unscramble.ui.theme.UnscrambleTheme
 fun GameScreen(
     gameViewModel: GameViewModel = viewModel()
 ) {
-    //This approach ensures that whenever there is a change in the uiState value,
+    // This approach ensures that whenever there is a change in the uiState value,
     // recomposition occurs for the composables using the gameUiState value.
     val gameUiState by gameViewModel.uiState.collectAsState()
 
@@ -80,10 +80,16 @@ fun GameScreen(
         )
 
         GameLayout(
+            // VM k ander ek method hai and usko pass kr rhe hai
+            // so that is why iski value recieve kr ne k time lambda fun ki need hai
+            // and ye value string type ki hai so recipient lambda fun string type ka hoga
+            // IN A NutShell "state hoisting"
             onUserGuessChanged = { gameViewModel.updateUserGuess(it) },
             userGuess = gameViewModel.userGuess,
-            onKeyboardDone = {  },
+            onKeyboardDone = { gameViewModel.checkUserGuess() },
+            isGuessWrong = gameUiState.isGuessedWordWrong,
             currentScrambledWord = gameUiState.currentScrambledWord,
+            wordCount = gameUiState.currentWordCount,
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
@@ -99,7 +105,7 @@ fun GameScreen(
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { }
+                onClick = { gameViewModel.checkUserGuess() }
             ) {
                 Text(
                     text = stringResource(R.string.submit),
@@ -108,7 +114,9 @@ fun GameScreen(
             }
 
             OutlinedButton(
-                onClick = { },
+                onClick = {
+                    gameViewModel.skipWord()
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -118,8 +126,16 @@ fun GameScreen(
             }
         }
 
-        GameStatus(score = 0, modifier = Modifier.padding(20.dp))
+        GameStatus(score = gameUiState.score, modifier = Modifier.padding(20.dp))
     }
+
+    if (gameUiState.isGameOver) {
+        FinalScoreDialog(
+            score = gameUiState.score,
+            onPlayAgain = { gameViewModel.resetGame() }
+        )
+    }
+
 }
 
 @Composable
@@ -135,14 +151,16 @@ fun GameStatus(score: Int, modifier: Modifier = Modifier) {
     }
 }
 
-//onUserGuessChanged lambda takes a String argument and returns nothing,
+// onUserGuessChanged lambda takes a String argument and returns nothing,
 // and the onKeyboardDone takes nothing and returns nothing
 @Composable
 fun GameLayout(
     currentScrambledWord: String,
+    isGuessWrong: Boolean,
     userGuess: String,
     onUserGuessChanged: (String) -> Unit,
     onKeyboardDone: () -> Unit,
+    wordCount: Int,
     modifier: Modifier = Modifier
 ) {
     val mediumPadding = dimensionResource(R.dimen.padding_medium)
@@ -162,7 +180,7 @@ fun GameLayout(
                     .background(colorScheme.surfaceTint)
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .align(alignment = Alignment.End),
-                text = stringResource(R.string.word_count, 0),
+                text = stringResource(R.string.word_count, wordCount),
                 style = typography.titleMedium,
                 color = colorScheme.onPrimary
             )
@@ -187,8 +205,14 @@ fun GameLayout(
                     disabledContainerColor = colorScheme.surface,
                 ),
                 onValueChange = onUserGuessChanged,
-                label = { Text(stringResource(R.string.enter_your_word)) },
-                isError = false,
+                label = {
+                    if (isGuessWrong) {
+                        Text(stringResource(R.string.wrong_guess))
+                    } else {
+                        Text(stringResource(R.string.enter_your_word))
+                    }
+                },
+                isError = isGuessWrong,
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Done
                 ),
@@ -211,6 +235,15 @@ private fun FinalScoreDialog(
 ) {
     val activity = (LocalContext.current as Activity)
 
+    /**
+     * =>Anatomy of alert dialog
+     * Container,
+     * Icon (optional)
+     * Headline (optional)
+     * Supporting text
+     * Divider (optional)
+     * Actions
+     */
     AlertDialog(
         onDismissRequest = {
             // Dismiss the dialog when the user clicks outside the dialog or on the back
