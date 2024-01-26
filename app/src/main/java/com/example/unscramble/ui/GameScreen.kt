@@ -217,7 +217,7 @@ fun GameLayout(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = { onKeyboardDone }
+                    onDone = { onKeyboardDone() }
                 )
             )
         }
